@@ -18,8 +18,9 @@ web:
     secretRefKeys:
       adminUsername: "adminUsername"
       adminPassword: "adminPassword"
-    adminUsername: ""
+    adminUsername: "admin"
     adminPassword: ""
+    basicAuthEnabled: true
   service:
     annotations: {}
     externalTrafficPolicy: ""
