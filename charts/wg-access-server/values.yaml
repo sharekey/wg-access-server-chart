@@ -3,7 +3,25 @@ config:
   # IPv6 is disabled by default, since it leads to the pod failing if the
   # k8s-cluster is not configured with IPv6 support
   vpn:
+    allowedIPs: []
     cidrv6: 0
+
+secretConfig:
+  config:
+    auth:
+      oidc:
+        name: "name"
+        issuer: "issuer"
+        clientID: "clientID"
+        clientSecret: "clientSecret"
+        scopes: "scopes"
+        redirectURL: "redirectURL"
+        emailDomains: "emailDomains"
+        claimMapping: "claimMapping"
+  existingSecret: ""
+  secretRefKeys:
+    config: "secretConfig"
+
 
 web:
   config:
@@ -74,6 +92,10 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+extraVolumes: []
+
+extraVolumeMounts: []
+
 nameOverride: ""
 
 fullnameOverride: ""
@@ -81,7 +103,7 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 image:
-  repository: ghcr.io/freifunkmuc/wg-access-server
+  repository: ""
   tag: ""
   pullPolicy: IfNotPresent
 
