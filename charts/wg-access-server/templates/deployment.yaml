@@ -34,16 +34,16 @@ spec:
       {{- if or .Values.secretConfig.config .Values.secretConfig.existingSecret }}
         - name: merge-config
           image: mikefarah/yq
-          command: ["sh", "-c", "yq '. *= load('/secretConfig.yaml')' '/config.yaml' > '/mergedConfig/config.yaml'"]
+          command: ["sh", "-c", "yq '. *= load(\"/secretConfig.yaml\")' /config.yaml > /mergedConfig/config.yaml ",]
           volumeMounts:
             - mountPath: /mergedConfig
-              name: mergedConfig
+              name: merged-config
             - mountPath: /config.yaml
               subPath: config.yaml
               name: config
             - mountPath: /secretConfig.yaml
               subPath: secretConfig.yaml
-              name: secretConfig
+              name: secret-config
       {{- end }}
       {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
@@ -96,7 +96,7 @@ spec:
             - name: data
               mountPath: /data
             {{- end }}
-            - name: {{ if or .Values.secretConfig.config .Values.secretConfig.existingSecret }}mergedConfig{{ else }}config{{ end }}
+            - name: {{ if or .Values.secretConfig.config .Values.secretConfig.existingSecret }}merged-config{{ else }}config{{ end }}
               mountPath: /config.yaml
               subPath: config.yaml
           {{- with .Values.extraVolumeMounts }}
@@ -125,13 +125,13 @@ spec:
         - name: config
           configMap:
             name: "{{ $fullName }}"
-        - name: secretConfig
+        - name: secret-config
           secret:
             secretName: {{ include "wg-access-server.secretConfigSecretName" . | quote }}
             items:
               - key: {{ .Values.secretConfig.secretRefKeys.config }}
                 path: secretConfig.yaml
-        - name: mergedConfig
+        - name: merged-config
           emptyDir: {}
       {{- with .Values.extraVolumes }}
         {{- tpl . $ | nindent 8 }}
