@@ -81,9 +81,9 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-extraVolumes: []
+extraVolumes: ""
 
-extraVolumeMounts: []
+extraVolumeMounts: ""
 
 nameOverride: ""
 
