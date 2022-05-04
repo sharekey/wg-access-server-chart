@@ -103,7 +103,7 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 image:
-  repository: "ghcr.io/freifunkmuc/wg-access-server"
+  repository: ghcr.io/freifunkmuc/wg-access-server
   tag: ""
   pullPolicy: IfNotPresent
 
