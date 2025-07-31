@@ -7,12 +7,10 @@ metadata:
     {{- include "wg-access-server.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicas }}
+  {{- with .Values.deploymentStrategy }}
   strategy:
-    {{- if .Values.persistence.enabled  }}
-    type: {{ .Values.strategy.type | default "Recreate" | quote }}
-    {{- else }}
-    type: {{ .Values.strategy.type | default "RollingUpdate" | quote }}
-    {{- end }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "wg-access-server.selectorLabels" . | nindent 6 }}
@@ -24,35 +22,21 @@ spec:
       labels:
         {{- include "wg-access-server.selectorLabels" . | nindent 8 }}
     spec:
+      hostNetwork: {{ .Values.hostNetwork | default "false" }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-    {{- if or (or .Values.secretConfig.config .Values.secretConfig.existingSecret) (.Values.initContainers)}}
+    {{- with .Values.initContainers }}
       initContainers:
-    {{- end }}
-      {{- if or .Values.secretConfig.config .Values.secretConfig.existingSecret }}
-        - name: merge-config
-          image: mikefarah/yq
-          command: ["sh", "-c", "yq '. *= load(\"/secret-config.yaml\")' /configmap-config.yaml > /merged-config/config.yaml "]
-          volumeMounts:
-            - mountPath: /merged-config
-              name: merged-config
-            - mountPath: /configmap-config.yaml
-              subPath: config.yaml
-              name: configmap-config
-            - mountPath: /secret-config.yaml
-              subPath: config.yaml
-              name: secret-config
-      {{- end }}
-      {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+        {{- with .Values.securityContext  }}
           securityContext:
-            capabilities:
-              add: ['NET_ADMIN']
+            {{- toYaml .Values.securityContext | nindent 12 }}
+        {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -83,24 +67,22 @@ spec:
                   key: {{ .Values.web.config.secretRefKeys.adminPassword }}
             {{- end }}
             - name: WG_STORAGE
-              {{- if .Values.postgresql.enabled }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "wg-access-server.postgresqlConnectionSecretName" . | quote }}
-                  key: {{ .Values.postgresql.secretRefKeys.uri }}
-              {{- else}}
-              value: "sqlite3:///data/db.sqlite3"
-              {{- end }}
+                  name: {{ include "wg-access-server.storageConnectionSecretName" . | quote }}
+                  key: {{ .Values.storage.secretRefKeys.uri }}
             - name: WG_CONFIG
               value: "/config.yaml"
           volumeMounts:
             - name: tun
               mountPath: /dev/net/tun
-            {{- if not .Values.postgresql.enabled }}
+            - name: mods
+              mountPath: /lib/modules
+            {{- if eq .Values.storage.type "sqlite3" }}
             - name: data
               mountPath: /data
             {{- end }}
-            - name: {{ if or .Values.secretConfig.config .Values.secretConfig.existingSecret }}merged-config{{ else }}configmap-config{{ end }}
+            - name: config
               mountPath: /config.yaml
               subPath: config.yaml
           {{- with .Values.extraVolumeMounts }}
@@ -117,7 +99,10 @@ spec:
           hostPath:
             type: 'CharDevice'
             path: /dev/net/tun
-      {{- if not .Values.postgresql.enabled }}
+        - name: mods
+          hostPath:
+            path: /lib/modules
+      {{- if eq .Values.storage.type "sqlite3" }}
         - name: data
         {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
@@ -135,8 +120,6 @@ spec:
             items:
               - key: {{ .Values.secretConfig.secretRefKeys.config }}
                 path: config.yaml
-        - name: merged-config
-          emptyDir: {}
       {{- with .Values.extraVolumes }}
         {{- tpl ( . | toYaml ) $ | nindent 8 }}
       {{- end}}
